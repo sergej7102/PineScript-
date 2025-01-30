@@ -1,62 +1,47 @@
-// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-
-// UYARI
-// Geliştirme amaçlıdır, doğrudan alım-satım stratejisi yerine ikame edilemez. 
-
-// ALPHATREND SCREENER çoğumuza ilham veren sevgili Kıvanç özbilgiç'e naçizane bir teşekkür için kodlandı. 
-// Umarım herkese faydası dokunur...  
-// © dg_factor [04.09.2022, İstanbul]
-
-// https://twitter.com/dg_factor/status/1661484012236595202?s=20
-
-// ALPHATREND SCREENER has been coded as a humble thanks to dear Kıvanç Özbilgiç who inspired many of us.
-// I hope it helps everyone...
-
-// Created & Developed by       : Kıvanç Özbilgiç (@KivancOzbilgic)
-// Screener Panel & Adjustments : @dg_factor
+// Надеюсь, этот инструмент будет полезен для всех...
 
 //@version=5
-indicator('AlphaTrend [Screener]', overlay=true, format=format.price, precision=2)
+indicator('Trend Screener', overlay=true, format=format.price, precision=2)
 
-// AlphaTrend Inputs
-src = input.source(title='Source', defval=close, group='ALPHATREND')
-AP = input.int(title='Length', defval=14, group='ALPHATREND')
-coeff = input.float(title='Multiplier', defval=1.0, step=0.1, group='ALPHATREND')
-novolumedata = input.bool(title='Change Calculation (No Volume Data)', defval=false, group='ALPHATREND')
-showsignalsk  = input(title='Show Signals ', defval=true, group='ALPHATREND')
+// Входные параметры для AlphaTrend
+src = input.source(title='Источник', defval=close, group='ALPHATREND') // Источник данных (по умолчанию - цена закрытия)
+AP = input.int(title='Длина', defval=14, group='ALPHATREND') // Период для расчета ATR и RSI
+coeff = input.float(title='Множитель', defval=1.0, step=0.1, group='ALPHATREND') // Множитель для ATR
+novolumedata = input.bool(title='Использовать RSI (без данных объема)', defval=false, group='ALPHATREND') // Использовать RSI вместо MFI, если нет данных по объему
+showsignalsk  = input(title='Показывать сигналы', defval=true, group='ALPHATREND') // Показывать сигналы покупки/продажи
 
-// AlphaTrend Calcs
-ATR = ta.sma(ta.tr, AP)
-upT = low - ATR * coeff
-downT = high + ATR * coeff
-rsi = ta.rsi(src, AP)
-mfi = ta.mfi(hlc3, AP)
-filter = novolumedata ? rsi >= 50 : mfi >= 50
-AlphaTrend = 0.0
-AlphaTrend := filter ? upT < nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : upT : downT > nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : downT
-color1 = AlphaTrend > AlphaTrend[2] ? #00E60F : AlphaTrend < AlphaTrend[2] ? #80000B : AlphaTrend[1] > AlphaTrend[3] ? #00E60F : #80000B
-buySignalk = ta.crossover(AlphaTrend, AlphaTrend[2])
-sellSignalk = ta.crossunder(AlphaTrend, AlphaTrend[2])
-K1 = ta.barssince(buySignalk)
-K2 = ta.barssince(sellSignalk)
-O1 = ta.barssince(buySignalk[1])
-O2 = ta.barssince(sellSignalk[1])
-direction = 0
-direction := buySignalk and O1 > K2 ? 1 : sellSignalk and O2 > K1 ? -1 : direction[1]
+// Расчеты для AlphaTrend
+ATR = ta.sma(ta.tr, AP) // Скользящая средняя ATR
+upT = low - ATR * coeff // Верхний уровень (низкие цены минус ATR * множитель)
+downT = high + ATR * coeff // Нижний уровень (высокие цены плюс ATR * множитель)
+rsi = ta.rsi(src, AP) // Индекс относительной силы (RSI)
+mfi = ta.mfi(hlc3, AP) // Индекс денежного потока (MFI)
+filter = novolumedata ? rsi >= 50 : mfi >= 50 // Фильтр: RSI >= 50 или MFI >= 50
+AlphaTrend = 0.0 // Инициализация переменной AlphaTrend
+AlphaTrend := filter ? upT < nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : upT : downT > nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : downT // Расчет AlphaTrend
+color1 = AlphaTrend > AlphaTrend[2] ? #00E60F : AlphaTrend < AlphaTrend[2] ? #80000B : AlphaTrend[1] > AlphaTrend[3] ? #00E60F : #80000B // Цвет для заливки
+buySignalk = ta.crossover(AlphaTrend, AlphaTrend[2]) // Сигнал покупки
+sellSignalk = ta.crossunder(AlphaTrend, AlphaTrend[2]) // Сигнал продажи
+K1 = ta.barssince(buySignalk) // Количество баров с последнего сигнала покупки
+K2 = ta.barssince(sellSignalk) // Количество баров с последнего сигнала продажи
+O1 = ta.barssince(buySignalk[1]) // Количество баров с предыдущего сигнала покупки
+O2 = ta.barssince(sellSignalk[1]) // Количество баров с предыдущего сигнала продажи
+direction = 0 // Направление тренда
+direction := buySignalk and O1 > K2 ? 1 : sellSignalk and O2 > K1 ? -1 : direction[1] // Определение направления тренда
 
-// Plots
-k1 = plot(AlphaTrend, title='AlphaTrend', color=#0022fc, linewidth=3)
-k2 = plot(AlphaTrend[2], title='Trigger', color=#fc0400, linewidth=3)
-fill(k1, k2, title='Fill Color', color=color1)
+// Построение графиков
+k1 = plot(AlphaTrend, title='AlphaTrend', color=#0022fc, linewidth=3) // График AlphaTrend
+k2 = plot(AlphaTrend[2], title='Триггер', color=#fc0400, linewidth=3) // График триггера
+fill(k1, k2, title='Цвет заливки', color=color1) // Заливка между графиками
 
-// Shapes
-plotshape(showsignalsk and buySignalk and O1 > K2 ? AlphaTrend[2] * 0.9999 : na, title='BUY', text='BUY', location=location.absolute, style=shape.labelup, size=size.tiny, color=#0022FC, textcolor=color.white)
-plotshape(showsignalsk and sellSignalk and O2 > K1 ? AlphaTrend[2] * 1.0001 : na, title='SELL', text='SELL', location=location.absolute, style=shape.labeldown, size=size.tiny, color=color.maroon, textcolor=color.white)
+// Отображение сигналов
+plotshape(showsignalsk and buySignalk and O1 > K2 ? AlphaTrend[2] * 0.9999 : na, title='ПОКУПКА', text='ПОК', location=location.absolute, style=shape.labelup, size=size.tiny, color=#15fc00, textcolor=#080505) // Сигнал покупки
+plotshape(showsignalsk and sellSignalk and O2 > K1 ? AlphaTrend[2] * 1.0001 : na, title='ПРОДАЖА', text='ПРОД', location=location.absolute, style=shape.labeldown, size=size.tiny, color=#ec5252, textcolor=#0a0808) // Сигнал продажи
 
 // Screener Inputs
 string gr_sc = 'SCREENER'
 string gr_sy = 'SYMBOL'
-string t00 = 'Alpha Trend Screener'
+string t00 = 'Trend Screener'
 color c00 = #686868
 lb_sh = input.bool(title='Show Label', defval=true, group=gr_sc)
 lb_xa = input.int(title='Horizontal Axis', defval=20, group=gr_sc, tooltip='Label Position x Axis')
@@ -165,7 +150,7 @@ f_label(l, t, c) =>
       y=bar_index > 200 ? fix_allign * (1 + lb_ya / 1000) : hl2 * (1 + lb_ya / 1000), 
       text=r, textcolor=c, textalign=text.align_right, 
       style=label.style_label_left, size=f_size(lb_sz), color=#00000000) : na
-//
+
 
 // Variables
 [a01, b01, c01] = request.security(s01, tf01, f_screener(sh01))
@@ -233,4 +218,3 @@ f_label(17, t17, c17)
 f_label(18, t18, c18)
 f_label(19, t19, c19)
 f_label(20, t20, c20)
-
